@@ -1,3 +1,6 @@
+import 'package:flutter/cupertino.dart';
+import 'package:lunar_calendar/calendar/LunarConverter.dart';
+
 enum Weekday { SUN, MON, TUE, WED, THU, FRI, SAT }
 
 enum VNLunarDay {
@@ -282,5 +285,24 @@ extension VNLunarDayEx on VNLunarDay {
       default:
         return null;
     }
+  }
+}
+
+class DateInfo {
+  DateTime date;
+  LunarDate lunar;
+
+  DateInfo({
+    @required this.date,
+  }) : lunar = SolarLunarConverter().convertSolar2Lunar(date);
+
+  void toNextDate() {
+    date = date.nextDate();
+    lunar = SolarLunarConverter().convertSolar2Lunar(date);
+  }
+
+  void toPreviousDate() {
+    date = date.previousDate();
+    lunar = SolarLunarConverter().convertSolar2Lunar(date);
   }
 }

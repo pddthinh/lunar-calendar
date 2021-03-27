@@ -4,8 +4,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lunar_calendar/calendar/Calendar.dart';
-import 'package:lunar_calendar/calendar/LunarConverter.dart';
 import 'package:lunar_calendar/calendar/SwipeDetector.dart';
+import 'package:lunar_calendar/calendar/ui/day/event/AddEventScreen.dart';
+import 'package:lunar_calendar/calendar/ui/day/event/EventView.dart';
 
 class DayView extends StatefulWidget {
   static const ROUTE_NAME = "/day";
@@ -15,135 +16,176 @@ class DayView extends StatefulWidget {
 }
 
 class _DayViewState extends State<DayView> {
-  DateTime _date;
+  DateInfo _dInfo;
 
-  Widget _buildDayText(BuildContext context) {
+  //region Build Day Info
+  Widget _buildDetailDayText(BuildContext context) {
     Color _color = Colors.black;
-    Weekday wd = _date.toWeekday();
+    Weekday wd = _dInfo.date.toWeekday();
     if (wd == Weekday.SUN) _color = Colors.red;
+
+    double size = 60;
+    size = 30;
 
     return Center(
       child: Text(
         "${wd.getVNText()}",
-        style: TextStyle(color: _color, fontSize: 60),
+        style: TextStyle(color: _color, fontSize: size),
       ),
     );
   }
 
-  Widget _buildDayNumber(BuildContext context) {
+  Widget _buildDetailDayNumber(BuildContext context) {
+    double size = 200;
+    size = 80;
+
+    Color _color = Colors.black;
+    if (_dInfo.date.toWeekday() == Weekday.SUN) _color = Colors.red;
+
     return Center(
       child: Text(
-        "${_date.day}",
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 200),
+        "${_dInfo.date.day}",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: size,
+          color: _color,
+        ),
       ),
     );
   }
 
-  Widget _buildLunarDay(BuildContext context) {
-    LunarDate lunar = SolarLunarConverter().convertSolar2Lunar(_date);
-    VNLunarDay vnLunarDay = lunar.getType();
+  Widget _buildDetailLunarDay(BuildContext context) {
+    VNLunarDay vnLunarDay = _dInfo.lunar.getType();
     Color ftColor;
-    List<Widget> extraWidgets = [];
+    String lunarDay = "${_dInfo.lunar.day}";
 
     if (vnLunarDay != VNLunarDay.NONE) {
       ftColor = Colors.red;
 
-      String text = "${vnLunarDay.getVnText()}";
-      if (vnLunarDay == VNLunarDay.Ram)
-        text = "$text ${lunar.getVNMonthName()}";
-
-      extraWidgets.add(Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-            color: Colors.blueAccent,
-            fontWeight: FontWeight.bold,
-            fontSize: 30),
-      ));
-    }
-
-    List<Widget> rowItems = [];
-
-    // Left column,
-    rowItems.add(Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Text(
-        "${lunar.getVNMonthName()}",
-        style: TextStyle(fontSize: 20, color: ftColor),
-      ),
-      Text(
-        "${lunar.day}",
-        style: TextStyle(
-          color: ftColor,
-          fontWeight: FontWeight.bold,
-          fontSize: 40,
-        ),
-      ),
-      Text(
-        "${lunar.getVNYearName()}",
-        style: TextStyle(color: ftColor, fontSize: 20),
-      ),
-    ]));
-
-    // Right column, if any
-    if (extraWidgets.isNotEmpty) {
-      rowItems.add(Flexible(
-        fit: FlexFit.loose,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: extraWidgets,
-        ),
-      ));
+      lunarDay = "${vnLunarDay.getVnText()} ($lunarDay)";
     }
 
     return Container(
-      margin: EdgeInsets.all(20),
+      margin: EdgeInsets.all(10),
       child: Center(
-        child: Row(
-          mainAxisAlignment: extraWidgets.isEmpty
-              ? MainAxisAlignment.center
-              : MainAxisAlignment.spaceAround,
-          children: rowItems,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Container(
+              margin: EdgeInsets.fromLTRB(0, 0, 0, 5),
+              child: Text(
+                "${_dInfo.lunar.getVNYearName()}",
+                style: TextStyle(color: ftColor, fontSize: 18),
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.fromLTRB(0, 0, 0, 5),
+              child: Text(
+                "$lunarDay",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ftColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.fromLTRB(0, 0, 0, 5),
+              child: Text(
+                "${_dInfo.lunar.getVNMonthName()}",
+                style: TextStyle(color: ftColor, fontSize: 18),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
+  Widget _buildDayInfo(BuildContext context) {
+    return SwipeDetector(
+      child: Container(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildDetailDayText(context),
+            _buildDetailDayNumber(context),
+            Container(
+              padding: EdgeInsets.only(top: 40),
+              child: _buildDetailLunarDay(context),
+            ),
+          ],
+        ),
+      ),
+      onNext: () {
+        setState(() {
+          _dInfo.toNextDate();
+        });
+      },
+      onPrevious: () {
+        setState(() {
+          _dInfo.toPreviousDate();
+        });
+      },
+    );
+  }
+
+  //endregion
+
+  DateInfo _getExactTime() {
+    DateTime now = DateTime.now();
+
+    return DateInfo(
+      date: DateTime(
+        _dInfo.date.year,
+        _dInfo.date.month,
+        _dInfo.date.day,
+        now.hour,
+        now.minute,
+        now.second,
+      ),
+    );
+  }
+
+  //region Main View
   @override
   Widget build(BuildContext context) {
-    if (_date == null) _date = ModalRoute.of(context).settings.arguments;
+    _dInfo ??= ModalRoute.of(context).settings.arguments;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "${_date.getVNMonthName()} - ${_date.year}",
+          "${_dInfo.date.getVNMonthName()} - ${_dInfo.date.year}",
         ),
       ),
-      body: SwipeDetector(
-        child: Container(
-//          decoration: BoxDecoration(
-//            border: Border.all(width: 5.0, color: Colors.black),
-//            borderRadius: BorderRadius.circular(2),
-//          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildDayText(context),
-              _buildDayNumber(context),
-              _buildLunarDay(context),
-            ],
+      body: Row(
+        children: [
+          Expanded(
+            child: Container(
+              child: _buildDayInfo(context),
+            ),
           ),
-        ),
-        onNext: () {
-          setState(() {
-            _date = _date.nextDate();
-          });
-        },
-        onPrevious: () {
-          setState(() {
-            _date = _date.previousDate();
-          });
+          EventView(date: _dInfo.date),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        mini: true,
+        child: Icon(Icons.add_alarm_rounded),
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            AddEventScreen.ROUTE_NAME,
+            arguments: _getExactTime(),
+          ).then(
+            (value) {
+              // Refresh the page to load new event, if any
+              if (value) setState(() {});
+            },
+          );
         },
       ),
     );
   }
+//endregion
 }

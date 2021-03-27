@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:lunar_calendar/calendar/Calendar.dart';
 import 'package:lunar_calendar/calendar/LunarConverter.dart';
 import 'package:lunar_calendar/calendar/SwipeDetector.dart';
 import 'package:lunar_calendar/calendar/ui/day/DayView.dart';
+import 'package:lunar_calendar/global.dart';
 
 class MonthView extends StatefulWidget {
   static const ROUTE_NAME = "/month";
@@ -20,28 +22,28 @@ class MonthView extends StatefulWidget {
 class _MonthViewState extends State<MonthView> {
   DateTime _startDate;
 
-  void nextMonth() {
-    setState(() {
-      _startDate = _startDate.nextMonth();
-//      _startDate = DateTime(_startDate.year, _startDate.month + 1);
-    });
-  }
-
-  void previousMonth() {
-    setState(() {
-      _startDate = _startDate.previousMonth();
-//      _startDate = DateTime(_startDate.year, _startDate.month - 1);
-    });
-  }
-
-  void toCurrentMonth() {
+  void _toCurrentMonth() {
     DateTime now = DateTime.now();
     _startDate = DateTime(now.year, now.month, 1);
   }
 
+  void _test() async {
+    List<Event> _events = await pluginWrapper.getEvents();
+    _events.forEach((element) {
+      debugPrint("[${element.start} --> ${element.end}]: ${element.title}");
+    });
+  }
+
+  @override
+  void initState() {
+    _test();
+
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_startDate == null) toCurrentMonth();
+    if (_startDate == null) _toCurrentMonth();
 
     return Scaffold(
       appBar: AppBar(
@@ -55,8 +57,16 @@ class _MonthViewState extends State<MonthView> {
             _Header(),
             SwipeDetector(
               child: _Detail(startDate: _startDate),
-              onNext: nextMonth,
-              onPrevious: previousMonth,
+              onNext: () {
+                setState(() {
+                  _startDate = _startDate.nextMonth();
+                });
+              },
+              onPrevious: () {
+                setState(() {
+                  _startDate = _startDate.previousMonth();
+                });
+              },
             ),
           ],
         ),
@@ -66,8 +76,10 @@ class _MonthViewState extends State<MonthView> {
         child: Icon(Icons.adjust_rounded),
         onPressed: () {
           setState(() {
-            toCurrentMonth();
+            _toCurrentMonth();
           });
+
+          _test();
         },
       ),
     );
@@ -90,23 +102,29 @@ class _Header extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(4),
       child: Row(
-          children: List.generate(Weekday.values.length, (index) {
-        return Expanded(
-            child: Container(
-          margin: EdgeInsets.fromLTRB(2, 0, 2, 0),
-          color: Colors.black12,
-          height: 50,
-          child: Center(
-            child: Text(
-              _getDayInWeek(index),
-              style: TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15),
-            ),
-          ),
-        ));
-      })),
+        children: List.generate(
+          Weekday.values.length,
+          (index) {
+            return Expanded(
+              child: Container(
+                margin: EdgeInsets.fromLTRB(2, 0, 2, 0),
+                color: Colors.black12,
+                height: 50,
+                child: Center(
+                  child: Text(
+                    _getDayInWeek(index),
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -128,28 +146,33 @@ class _Detail extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(4),
       child: Table(
-        children: List.generate(_NUMBER_OF_ROW, (rowIdx) {
-          return TableRow(
+        children: List.generate(
+          _NUMBER_OF_ROW,
+          (rowIdx) {
+            return TableRow(
               // 0 - 6
-              children: List.generate(Weekday.values.length, (wdIdx) {
-            DateTime cellDate;
+              children: List.generate(
+                Weekday.values.length,
+                (wdIdx) {
+                  DateTime cellDate;
 
-            do {
-              // The 1st row
-              if (rowIdx == 0 && (wdIdx < startDate.toWeekday().index)) break;
+                  do {
+                    // The 1st row
+                    if (rowIdx == 0 && (wdIdx < startDate.toWeekday().index))
+                      break;
 
-              cellDate = startDate.add(Duration(days: _dayCounter));
-              _dayCounter++;
+                    cellDate = startDate.add(Duration(days: _dayCounter));
+                    _dayCounter++;
 
-              if (cellDate.month != startDate.month) cellDate = null;
-            } while (false);
+                    if (cellDate.month != startDate.month) cellDate = null;
+                  } while (false);
 
-            return new _Cell(
-              height: _height,
-              date: cellDate,
+                  return new _Cell(height: _height, date: cellDate);
+                },
+              ),
             );
-          }));
-        }),
+          },
+        ),
       ),
     );
   }
@@ -159,15 +182,19 @@ class _Cell extends StatelessWidget {
   final double height;
   final DateTime date;
 
-  const _Cell({Key key, this.height, this.date}) : super(key: key);
+  const _Cell({
+    Key key,
+    this.height,
+    this.date,
+  }) : super(key: key);
 
-  Weekday getWeekday() {
+  Weekday _getWeekday() {
     return (date != null ? date.toWeekday() : null);
   }
 
   Widget _buildSonarDateText(BuildContext context) {
     Color _color = Colors.black;
-    if (getWeekday() == Weekday.SUN) _color = Colors.red;
+    if (_getWeekday() == Weekday.SUN) _color = Colors.red;
 
     return Text(
       "${date.day}",
@@ -192,11 +219,12 @@ class _Cell extends StatelessWidget {
     }
 
     return FittedBox(
-        child: Text(
-      lunarText,
-      textAlign: TextAlign.center,
-      style: TextStyle(color: ftColor, fontSize: 18, fontWeight: ftWeight),
-    ));
+      child: Text(
+        lunarText,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: ftColor, fontSize: 18, fontWeight: ftWeight),
+      ),
+    );
   }
 
   @override
@@ -214,21 +242,27 @@ class _Cell extends StatelessWidget {
     }
 
     return GestureDetector(
-        onTap: () {
-          Navigator.pushNamed(context, DayView.ROUTE_NAME, arguments: date);
-        },
-        child: Container(
-            margin: EdgeInsets.all(2),
-            height: height,
-            decoration: _highlight,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildSonarDateText(context),
-                  _buildLunarDateText(context),
-                ],
-              ),
-            )));
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          DayView.ROUTE_NAME,
+          arguments: DateInfo(date: date),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.all(2),
+        height: height,
+        decoration: _highlight,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildSonarDateText(context),
+              _buildLunarDateText(context),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
