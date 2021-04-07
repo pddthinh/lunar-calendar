@@ -284,6 +284,8 @@ class AddEventState extends State<AddEventScreen> {
   }
 
   void _registerEvent(BuildContext context) async {
+    //TODO: implement for recurrence events!
+
     Event event = Event(
       null,
       title: _controllerTitle.text,

@@ -7,9 +7,7 @@ import 'package:lunar_calendar/global.dart';
 class EventView extends StatefulWidget {
   final DateTime date;
 
-  EventView({Key key, @required this.date}) : super(key: key) {
-    debugPrint("EventView constructor: $date");
-  }
+  EventView({Key key, @required this.date}) : super(key: key);
 
   @override
   State createState() => _EventState();
@@ -29,7 +27,6 @@ class _EventState extends State<EventView> {
   @override
   Widget build(BuildContext context) {
     DateTime _date = widget.date;
-    debugPrint("_EventState - build: $_date");
 
     return new FutureBuilder<List<Event>>(
       future: pluginWrapper.getEvents(
@@ -40,7 +37,7 @@ class _EventState extends State<EventView> {
         if (snapshot.connectionState != ConnectionState.done)
           return Container();
 
-        debugPrint("List size: ${snapshot.data?.length}");
+        // debugPrint("List size: ${snapshot.data?.length}");
 
         var events = snapshot.data;
         events ??= [];

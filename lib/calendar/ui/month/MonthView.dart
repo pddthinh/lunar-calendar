@@ -27,18 +27,27 @@ class _MonthViewState extends State<MonthView> {
     _startDate = DateTime(now.year, now.month, 1);
   }
 
-  void _test() async {
-    List<Event> _events = await pluginWrapper.getEvents();
+  Future<Map<int, bool>> _getEventsInMonth() async {
+    DateTime _start = _startDate;
+    DateTime _end = _startDate.nextMonth().previousDate();
+
+    List<Event> _events = await pluginWrapper.getEvents(
+      start: _start,
+      end: _end,
+    );
+
+    // debugPrint("Search for [$_start ~ $_end] --> $_events");
+
+    Map<int, bool> _result = new Map();
     _events.forEach((element) {
-      debugPrint("[${element.start} --> ${element.end}]: ${element.title}");
+      _result[element.start.day] = true;
     });
+
+    return _result;
   }
 
-  @override
-  void initState() {
-    _test();
-
-    super.initState();
+  void refresh() {
+    setState(() {});
   }
 
   @override
@@ -51,12 +60,10 @@ class _MonthViewState extends State<MonthView> {
       ),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Header(),
             SwipeDetector(
-              child: _Detail(startDate: _startDate),
               onNext: () {
                 setState(() {
                   _startDate = _startDate.nextMonth();
@@ -67,6 +74,19 @@ class _MonthViewState extends State<MonthView> {
                   _startDate = _startDate.previousMonth();
                 });
               },
+              child: FutureBuilder<Map<int, bool>>(
+                future: _getEventsInMonth(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done)
+                    return Container();
+
+                  // debugPrint("Query result: ${snapshot.data}");
+                  return _Detail(
+                    startDate: _startDate,
+                    events: snapshot.data,
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -78,8 +98,6 @@ class _MonthViewState extends State<MonthView> {
           setState(() {
             _toCurrentMonth();
           });
-
-          _test();
         },
       ),
     );
@@ -132,8 +150,13 @@ class _Header extends StatelessWidget {
 class _Detail extends StatelessWidget {
   static const int _NUMBER_OF_ROW = 6;
   final DateTime startDate;
+  final Map<int, bool> events;
 
-  const _Detail({Key key, this.startDate}) : super(key: key);
+  const _Detail({
+    Key key,
+    this.startDate,
+    this.events,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +178,7 @@ class _Detail extends StatelessWidget {
                 Weekday.values.length,
                 (wdIdx) {
                   DateTime cellDate;
+                  bool _hasEvent = false;
 
                   do {
                     // The 1st row
@@ -165,9 +189,24 @@ class _Detail extends StatelessWidget {
                     _dayCounter++;
 
                     if (cellDate.month != startDate.month) cellDate = null;
+
+                    _hasEvent = (cellDate != null &&
+                        events != null &&
+                        events.containsKey(cellDate.day) &&
+                        events[cellDate.day]);
                   } while (false);
 
-                  return new _Cell(height: _height, date: cellDate);
+                  return _Cell(
+                    callback: () {
+                      // Refresh when there is event updated
+                      var state =
+                          context.findAncestorStateOfType<_MonthViewState>();
+                      state?.refresh();
+                    },
+                    height: _height,
+                    date: cellDate,
+                    hasEvent: _hasEvent,
+                  );
                 },
               ),
             );
@@ -181,11 +220,15 @@ class _Detail extends StatelessWidget {
 class _Cell extends StatelessWidget {
   final double height;
   final DateTime date;
+  final bool hasEvent;
+  final VoidCallback callback;
 
   const _Cell({
     Key key,
+    @required this.callback,
     this.height,
     this.date,
+    this.hasEvent,
   }) : super(key: key);
 
   Weekday _getWeekday() {
@@ -198,8 +241,11 @@ class _Cell extends StatelessWidget {
 
     return Text(
       "${date.day}",
-      style:
-          TextStyle(color: _color, fontWeight: FontWeight.bold, fontSize: 30),
+      style: TextStyle(
+        color: _color,
+        fontWeight: FontWeight.bold,
+        fontSize: 30,
+      ),
     );
   }
 
@@ -236,7 +282,7 @@ class _Cell extends StatelessWidget {
     if (date.isSameDay(DateTime.now())) {
       _highlight = BoxDecoration(
         color: Colors.black12,
-        border: Border.all(width: 3.0, color: Colors.blue),
+        border: Border.all(width: 2.0, color: Colors.blue),
         borderRadius: BorderRadius.circular(10),
       );
     }
@@ -247,21 +293,42 @@ class _Cell extends StatelessWidget {
           context,
           DayView.ROUTE_NAME,
           arguments: DateInfo(date: date),
-        );
+        ).then((value) {
+          if (value) callback();
+        });
       },
-      child: Container(
-        margin: EdgeInsets.all(2),
-        height: height,
-        decoration: _highlight,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildSonarDateText(context),
-              _buildLunarDateText(context),
-            ],
+      child: Stack(
+        children: [
+          // The marker if having registered event in the day
+          Visibility(
+            visible: hasEvent,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Container(
+                child: Icon(
+                  Icons.star,
+                  size: 15,
+                  color: Colors.red.shade300,
+                ),
+              ),
+            ),
           ),
-        ),
+
+          // The main Cell view
+          Container(
+            height: height,
+            decoration: _highlight,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildSonarDateText(context),
+                  _buildLunarDateText(context),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

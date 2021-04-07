@@ -17,6 +17,7 @@ class DayView extends StatefulWidget {
 
 class _DayViewState extends State<DayView> {
   DateInfo _dInfo;
+  bool _shouldRefresh = false;
 
   //region Build Day Info
   Widget _buildDetailDayText(BuildContext context) {
@@ -104,30 +105,18 @@ class _DayViewState extends State<DayView> {
   }
 
   Widget _buildDayInfo(BuildContext context) {
-    return SwipeDetector(
-      child: Container(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildDetailDayText(context),
-            _buildDetailDayNumber(context),
-            Container(
-              padding: EdgeInsets.only(top: 40),
-              child: _buildDetailLunarDay(context),
-            ),
-          ],
-        ),
+    return Container(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildDetailDayText(context),
+          _buildDetailDayNumber(context),
+          Container(
+            padding: EdgeInsets.only(top: 40),
+            child: _buildDetailLunarDay(context),
+          ),
+        ],
       ),
-      onNext: () {
-        setState(() {
-          _dInfo.toNextDate();
-        });
-      },
-      onPrevious: () {
-        setState(() {
-          _dInfo.toPreviousDate();
-        });
-      },
     );
   }
 
@@ -153,37 +142,63 @@ class _DayViewState extends State<DayView> {
   Widget build(BuildContext context) {
     _dInfo ??= ModalRoute.of(context).settings.arguments;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "${_dInfo.date.getVNMonthName()} - ${_dInfo.date.year}",
-        ),
-      ),
-      body: Row(
-        children: [
-          Expanded(
-            child: Container(
-              child: _buildDayInfo(context),
-            ),
+    return WillPopScope(
+      // Catch the button back and notify parent to refresh if needed
+      onWillPop: () async {
+        debugPrint("$this ==> onWillPop, shouldRefresh: $_shouldRefresh");
+        Navigator.pop(context, _shouldRefresh);
+
+        return false;
+      },
+
+      // The main view
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            "${_dInfo.date.getVNMonthName()} - ${_dInfo.date.year}",
           ),
-          EventView(date: _dInfo.date),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        mini: true,
-        child: Icon(Icons.add_alarm_rounded),
-        onPressed: () {
-          Navigator.pushNamed(
-            context,
-            AddEventScreen.ROUTE_NAME,
-            arguments: _getExactTime(),
-          ).then(
-            (value) {
-              // Refresh the page to load new event, if any
-              if (value) setState(() {});
-            },
-          );
-        },
+        ),
+        body: SwipeDetector(
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  child: _buildDayInfo(context),
+                ),
+              ),
+              EventView(date: _dInfo.date),
+            ],
+          ),
+          onNext: () {
+            setState(() {
+              _dInfo.toNextDate();
+            });
+          },
+          onPrevious: () {
+            setState(() {
+              _dInfo.toPreviousDate();
+            });
+          },
+        ),
+        floatingActionButton: FloatingActionButton(
+          mini: true,
+          child: Icon(Icons.add_alarm_rounded),
+          onPressed: () {
+            Navigator.pushNamed(
+              context,
+              AddEventScreen.ROUTE_NAME,
+              arguments: _getExactTime(),
+            ).then(
+              (value) {
+                // Refresh the page to load new event, if any
+                if (value)
+                  setState(() {
+                    _shouldRefresh = true;
+                  });
+              },
+            );
+          },
+        ),
       ),
     );
   }
