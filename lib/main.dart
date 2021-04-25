@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lunar_calendar/calendar/ui/day/DayView.dart';
-import 'package:lunar_calendar/calendar/ui/day/event/AddEventScreen.dart';
+import 'package:lunar_calendar/calendar/ui/day/event/EventDetail.dart';
 import 'package:lunar_calendar/calendar/ui/month/MonthView.dart';
 import 'package:lunar_calendar/global.dart';
 
@@ -35,7 +35,7 @@ class Calendar extends StatelessWidget {
       routes: {
         MonthView.ROUTE_NAME: (context) => _monthView,
         DayView.ROUTE_NAME: (context) => DayView(),
-        AddEventScreen.ROUTE_NAME: (context) => AddEventScreen(),
+        EventDetail.ROUTE_NAME: (context) => EventDetail(),
       },
     );
   }

@@ -29,7 +29,8 @@ class _MonthViewState extends State<MonthView> {
 
   Future<Map<int, bool>> _getEventsInMonth() async {
     DateTime _start = _startDate;
-    DateTime _end = _startDate.nextMonth().previousDate();
+    DateTime _tmp = _startDate.nextMonth().previousDate();
+    DateTime _end = DateTime(_tmp.year, _tmp.month, _tmp.day, 23, 59, 59);
 
     List<Event> _events = await pluginWrapper.getEvents(
       start: _start,
@@ -94,11 +95,7 @@ class _MonthViewState extends State<MonthView> {
       floatingActionButton: FloatingActionButton(
         mini: true,
         child: Icon(Icons.adjust_rounded),
-        onPressed: () {
-          setState(() {
-            _toCurrentMonth();
-          });
-        },
+        onPressed: () => setState(() => _toCurrentMonth()),
       ),
     );
   }
@@ -198,6 +195,8 @@ class _Detail extends StatelessWidget {
 
                   return _Cell(
                     callback: () {
+                      // debugPrint("Cell is refreshing ...");
+
                       // Refresh when there is event updated
                       var state =
                           context.findAncestorStateOfType<_MonthViewState>();

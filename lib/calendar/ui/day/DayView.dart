@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lunar_calendar/calendar/Calendar.dart';
 import 'package:lunar_calendar/calendar/SwipeDetector.dart';
-import 'package:lunar_calendar/calendar/ui/day/event/AddEventScreen.dart';
-import 'package:lunar_calendar/calendar/ui/day/event/EventView.dart';
+import 'package:lunar_calendar/calendar/ui/day/event/EventDetail.dart';
+import 'package:lunar_calendar/calendar/ui/day/event/EventList.dart';
 
 class DayView extends StatefulWidget {
   static const ROUTE_NAME = "/day";
@@ -145,7 +145,7 @@ class _DayViewState extends State<DayView> {
     return WillPopScope(
       // Catch the button back and notify parent to refresh if needed
       onWillPop: () async {
-        debugPrint("$this ==> onWillPop, shouldRefresh: $_shouldRefresh");
+        // debugPrint("$this ==> onWillPop, shouldRefresh: $_shouldRefresh");
         Navigator.pop(context, _shouldRefresh);
 
         return false;
@@ -154,50 +154,39 @@ class _DayViewState extends State<DayView> {
       // The main view
       child: Scaffold(
         appBar: AppBar(
-          title: Text(
-            "${_dInfo.date.getVNMonthName()} - ${_dInfo.date.year}",
-          ),
+          title: Text("${_dInfo.date.getVNMonthName()} - ${_dInfo.date.year}"),
         ),
         body: SwipeDetector(
           child: Row(
             children: [
               Expanded(
-                child: Container(
-                  child: _buildDayInfo(context),
-                ),
+                child: Container(child: _buildDayInfo(context)),
               ),
-              EventView(date: _dInfo.date),
+              EventList(
+                date: _dInfo.date,
+                onUpdated: (updated) => _shouldRefresh = updated,
+              ),
             ],
           ),
-          onNext: () {
-            setState(() {
-              _dInfo.toNextDate();
-            });
-          },
-          onPrevious: () {
-            setState(() {
-              _dInfo.toPreviousDate();
-            });
-          },
+          onNext: () => setState(() => _dInfo.toNextDate()),
+          onPrevious: () => setState(() => _dInfo.toPreviousDate()),
         ),
         floatingActionButton: FloatingActionButton(
           mini: true,
           child: Icon(Icons.add_alarm_rounded),
-          onPressed: () {
-            Navigator.pushNamed(
-              context,
-              AddEventScreen.ROUTE_NAME,
-              arguments: _getExactTime(),
-            ).then(
-              (value) {
-                // Refresh the page to load new event, if any
-                if (value)
-                  setState(() {
-                    _shouldRefresh = true;
-                  });
-              },
-            );
-          },
+          onPressed: () => Navigator.pushNamed(
+            context,
+            EventDetail.ROUTE_NAME,
+            arguments: _getExactTime(),
+            // DetailParam(dInfo: _getExactTime()),
+          ).then(
+            (value) {
+              if (value == null || !value) return;
+
+              // Refresh the page to load new event, if any
+              setState(() => _shouldRefresh = true);
+            },
+          ),
         ),
       ),
     );

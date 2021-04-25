@@ -5,26 +5,39 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lunar_calendar/calendar/Calendar.dart';
+import 'package:lunar_calendar/calendar/CalendarPluginWrapper.dart';
 import 'package:lunar_calendar/calendar/ui/day/event/EventAlarm.dart';
 import 'package:lunar_calendar/global.dart';
 
-class AddEventScreen extends StatefulWidget {
-  static const ROUTE_NAME = "/addEvent";
+class EventDetail extends StatefulWidget {
+  static const ROUTE_NAME = "/eventDetail";
+  final Event event;
+
+  const EventDetail({Key key, this.event}) : super(key: key);
 
   @override
-  State createState() => AddEventState();
+  State createState() => _EventDetailState();
 }
 
-class AddEventState extends State<AddEventScreen> {
+class DetailParam {
+  final DateInfo dInfo;
+  final Event event;
+
+  const DetailParam({this.dInfo, this.event});
+}
+
+class _EventDetailState extends State<EventDetail> {
   //region Member variables
   final TextEditingController _controllerTitle = TextEditingController();
   final TextEditingController _controllerDetail = TextEditingController();
 
+  Event _event;
+
   DateInfo _dStart;
   DateInfo _dEnd;
 
-  bool _isAllDay;
-  _RepeatMode _repeatMode;
+  bool _isAllDay = false;
+  _RepeatMode _repeatMode = _RepeatMode.NoRepeat;
   Duration _alarmDuration;
 
   //endregion
@@ -32,11 +45,29 @@ class AddEventState extends State<AddEventScreen> {
   //region Override functions
   @override
   void initState() {
-    super.initState();
+    _event = widget.event;
+    if (_event != null) {
+      _isAllDay = _event.allDay;
+      _RepeatMode tmpMode = _RepeatModeEx.fromEvent(_event);
+      _repeatMode = (tmpMode != null ? tmpMode : _RepeatMode.NoRepeat);
 
-    _isAllDay = false;
-    _repeatMode = _RepeatMode.NoRepeat;
+      _dStart = DateInfo(date: _event.start);
+      _dEnd = DateInfo(date: _event.end);
+
+      _controllerTitle.text = _event.title;
+      _controllerDetail.text = _event.description;
+    }
+
+    super.initState();
   }
+
+  // void _initParam() {
+  //   // Retrieve the param if any
+  //   DetailParam _param = ModalRoute.of(context).settings.arguments;
+  //   if (_param != null) {
+  //     if (_param.dInfo != null) _setStartDate(_param.dInfo);
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -50,7 +81,7 @@ class AddEventState extends State<AddEventScreen> {
   Widget build(BuildContext context) {
     if (_dStart == null) {
       _setStartDate(ModalRoute.of(context).settings.arguments);
-      debugPrint("Received date: $_dStart");
+      // debugPrint("Received date: $_dStart");
     }
 
     return Scaffold(
@@ -100,10 +131,8 @@ class AddEventState extends State<AddEventScreen> {
         SizedBox(
           width: MediaQuery.of(context).size.width,
           child: FloatingActionButton(
-            child: Icon(Icons.add),
-            onPressed: () {
-              _registerEvent(context);
-            },
+            child: Icon(_event == null ? Icons.add : Icons.save_alt_sharp),
+            onPressed: !_isDataInput() ? null : () => _registerEvent(context),
           ),
         ),
       ],
@@ -131,11 +160,7 @@ class AddEventState extends State<AddEventScreen> {
                 ),
                 value: _isAllDay,
                 controlAffinity: ListTileControlAffinity.leading,
-                onChanged: (newValue) {
-                  setState(() {
-                    _isAllDay = newValue;
-                  });
-                },
+                onChanged: (newValue) => setState(() => _isAllDay = newValue),
               ),
             ),
           ),
@@ -143,22 +168,19 @@ class AddEventState extends State<AddEventScreen> {
             padding: EdgeInsets.only(right: 10),
             child: DropdownButton<_RepeatMode>(
               value: _repeatMode,
-              onChanged: (value) {
-                setState(() {
-                  _repeatMode = value;
-                });
-              },
-              items:
-                  _RepeatMode.values.map<DropdownMenuItem<_RepeatMode>>((mode) {
-                return DropdownMenuItem(
-                  value: mode,
-                  child: Text(
-                    mode.name(),
-                    textAlign: TextAlign.end,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
+              onChanged: (value) => setState(() => _repeatMode = value),
+              items: _RepeatMode.values
+                  .map<DropdownMenuItem<_RepeatMode>>(
+                    (mode) => DropdownMenuItem(
+                      value: mode,
+                      child: Text(
+                        mode.name(),
+                        textAlign: TextAlign.end,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
         ],
@@ -185,13 +207,11 @@ class AddEventState extends State<AddEventScreen> {
               showDetail: !_isAllDay,
             ),
             onTap: () {
-              _showDatePicker(context, _dStart.date, (value) {
-                setState(() {
-                  _setStartDate(
-                    DateInfo(date: value),
-                  );
-                });
-              });
+              _showDatePicker(
+                context,
+                _dStart.date,
+                (value) => setState(() => _setStartDate(DateInfo(date: value))),
+              );
             },
           ),
           Text(
@@ -205,11 +225,11 @@ class AddEventState extends State<AddEventScreen> {
               showDetail: !_isAllDay,
             ),
             onTap: () {
-              _showDatePicker(context, _dEnd.date, (value) {
-                setState(() {
-                  _dEnd = DateInfo(date: value);
-                });
-              });
+              _showDatePicker(
+                context,
+                _dEnd.date,
+                (value) => setState(() => _dEnd = DateInfo(date: value)),
+              );
             },
           ),
         ],
@@ -223,7 +243,7 @@ class AddEventState extends State<AddEventScreen> {
       child: EventAlarm(
         callback: (duration) {
           _alarmDuration = duration;
-          debugPrint("Alarm duration: $_alarmDuration");
+          // debugPrint("Alarm duration: $_alarmDuration");
         },
       ),
     );
@@ -256,7 +276,7 @@ class AddEventState extends State<AddEventScreen> {
       selectedDate.hour,
       _initMin,
     );
-    debugPrint("Init date: $_initDate");
+    // debugPrint("Init date: $_initDate");
 
     showModalBottomSheet(
       isScrollControlled: false,
@@ -284,29 +304,101 @@ class AddEventState extends State<AddEventScreen> {
   }
 
   void _registerEvent(BuildContext context) async {
-    //TODO: implement for recurrence events!
+    Event event = (_event == null ? Event(null) : _event);
 
-    Event event = Event(
-      null,
-      title: _controllerTitle.text,
-      description: _controllerDetail.text,
-      start: _dStart.date,
-      end: _dEnd.date,
-      allDay: _isAllDay,
-    );
+    event.title = _controllerTitle.text;
+    event.description = _controllerDetail.text;
+    event.start = _dStart.date;
+    event.end = _dEnd.date;
+    event.allDay = _isAllDay;
     event.reminders = [Reminder(minutes: _alarmDuration.inMinutes)];
 
-    String message = "Event registered successfully";
-    bool isRegistered = await pluginWrapper.registerEvent(event);
-    if (!isRegistered) message = "Failed to register the event!";
+    //region Processing for recurrence events
+    RecurrenceRule _rRule;
+    var _endDate = _calculateEndDate(event.start, _repeatMode);
+
+    switch (_repeatMode) {
+      case _RepeatMode.Daily:
+        _rRule = RecurrenceRule(
+          RecurrenceFrequency.Daily,
+          endDate: _endDate,
+        );
+        break;
+
+      case _RepeatMode.Weekly:
+        _rRule = RecurrenceRule(
+          RecurrenceFrequency.Weekly,
+          endDate: _endDate,
+        );
+        break;
+
+      case _RepeatMode.Monthly:
+        _rRule = RecurrenceRule(
+          RecurrenceFrequency.Monthly,
+          endDate: _endDate,
+        );
+        break;
+
+      case _RepeatMode.VNLunarMonthly:
+        //TODO: implement for lunar monthly recurrence events!
+        break;
+
+      default:
+        break;
+    }
+
+    event.recurrenceRule = _rRule;
+    //endregion
+
+    debugPrint("Create/Update event: ${event.json}");
+
+    String eventId = await pluginWrapper.registerEvent(event);
+    // debugPrint("Created/Updated eventId: $eventId");
+
+    // Success?
+    if (eventId != null) {
+      Navigator.of(context).pop(true);
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text("Failed registering the event!"),
       ),
     );
+  }
 
-    Navigator.of(context).pop(isRegistered);
+  DateTime _calculateEndDate(DateTime start, _RepeatMode mode) {
+    if (mode == _RepeatMode.NoRepeat || mode == _RepeatMode.VNLunarMonthly)
+      return null;
+
+    var _end = DateTime(start.year, start.month, start.day);
+
+    do {
+      switch (mode) {
+        case _RepeatMode.Daily:
+          _end = _end.add(Duration(days: 1));
+          break;
+
+        case _RepeatMode.Weekly:
+          _end = _end.add(Duration(days: 7));
+          break;
+
+        case _RepeatMode.Monthly:
+          _end = DateTime(_end.year, _end.month + 1, _end.day);
+          break;
+
+        default:
+          break;
+      }
+    } while (_end.isBefore(Config.RECURRENCE_END));
+
+    return _end;
+  }
+
+  bool _isDataInput() {
+    return (_controllerTitle.text.isNotEmpty) &&
+        (_controllerDetail.text.isNotEmpty);
   }
 //endregion
 }
@@ -400,6 +492,24 @@ extension _RepeatModeEx on _RepeatMode {
     }
 
     return null;
+  }
+
+  static _RepeatMode fromEvent(Event event) {
+    if (event.recurrenceRule == null) return null;
+
+    switch (event.recurrenceRule.recurrenceFrequency) {
+      case RecurrenceFrequency.Daily:
+        return _RepeatMode.Daily;
+
+      case RecurrenceFrequency.Weekly:
+        return _RepeatMode.Weekly;
+
+      case RecurrenceFrequency.Monthly:
+        return _RepeatMode.Monthly;
+
+      default:
+        return null;
+    }
   }
 }
 //endregion

@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -49,13 +47,17 @@ class CalendarPluginWrapper {
     });
   }
 
-  Future<bool> registerEvent(Event event) async {
+  ///
+  /// Register an event
+  /// @return: the event ID if success
+  Future<String> registerEvent(Event event) async {
     if (!_init) await initCalendar();
 
     event.calendarId ??= _calendar.id;
 
     Result<String> _result = await _calPlugin.createOrUpdateEvent(event);
-    return _result.isSuccess;
+
+    return (_result.isSuccess ? _result.data : null);
   }
 
   Future<List<Event>> getEvents({DateTime start, DateTime end}) async {
@@ -77,5 +79,77 @@ class CalendarPluginWrapper {
     if (!result.isSuccess) return null;
 
     return result.data.toList();
+  }
+
+  Future<bool> deleteEvent(Event event) async {
+    if (!_init) await initCalendar();
+
+    // debugPrint("Deleting event: ${event.json}");
+
+    var result = await _calPlugin.deleteEvent(
+      _calendar.id,
+      event.eventId,
+    );
+
+    return result.isSuccess;
+  }
+
+  // TODO: check this function again, not working
+  Future<bool> deleteRecurrenceEvents(
+    Event event,
+    bool onlyCurrentInstance,
+  ) async {
+    if (!_init) await initCalendar();
+
+    var result = await _calPlugin.deleteEventInstance(
+      _calendar.id,
+      event.eventId,
+      event.start.millisecondsSinceEpoch,
+      event.end.millisecondsSinceEpoch,
+      onlyCurrentInstance,
+    );
+
+    debugPrint(
+      "Remove result data: ${result.data}\nError: ${result.errorMessages}",
+    );
+
+    return result.isSuccess && result.data;
+  }
+}
+
+extension EventEx on Event {
+  String get json {
+    final Map<String, dynamic> data = Map<String, dynamic>();
+
+    data['eventId'] = eventId;
+    data['calendarId'] = calendarId;
+    data['title'] = title;
+    data['description'] = description;
+    data['start'] = start;
+    data['end'] = end;
+    data['allDay'] = allDay;
+    data['location'] = location;
+    data['attendees'] = attendees?.map((a) => a.toJson())?.toList();
+    data['recurrenceRule'] = recurrenceRule?.json();
+    data['reminders'] = reminders?.map((r) => r.toJson())?.toList();
+
+    return data.toString();
+  }
+}
+
+extension RecurrenceRuleEx on RecurrenceRule {
+  Map<String, dynamic> json() {
+    final Map<String, dynamic> data = Map<String, dynamic>();
+
+    data['totalOccurrences'] = totalOccurrences;
+    data['interval'] = interval;
+    data['endDate'] = endDate;
+    data['recurrenceFrequency'] = recurrenceFrequency;
+    data['daysOfWeek'] = daysOfWeek?.map((d) => d.value)?.toList();
+    data['monthOfYear'] = monthOfYear;
+    data['weekOfMonth'] = weekOfMonth;
+    data['dayOfMonth'] = dayOfMonth;
+
+    return data;
   }
 }
