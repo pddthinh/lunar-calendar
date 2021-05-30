@@ -1,5 +1,5 @@
 import 'package:device_calendar/device_calendar.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:lunar_calendar/calendar/LunarEventManager.dart';
 
 class CalendarPluginWrapper {
