@@ -14,6 +14,7 @@ class Calendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     pluginWrapper.initCalendar();
+    lnEventManager.init();
 
     // Force the screen orientation
     // https://stackoverflow.com/questions/49418332/flutter-how-to-prevent-device-orientation-changes-and-force-portrait

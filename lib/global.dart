@@ -1,6 +1,8 @@
 import 'package:lunar_calendar/calendar/CalendarPluginWrapper.dart';
+import 'package:lunar_calendar/calendar/LunarEventManager.dart';
 
 CalendarPluginWrapper pluginWrapper = CalendarPluginWrapper();
+LunarEventManager lnEventManager = LunarEventManager();
 
 class Config {
   // ignore: non_constant_identifier_names

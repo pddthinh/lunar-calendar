@@ -1,5 +1,6 @@
 import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:lunar_calendar/calendar/LunarEventManager.dart';
 
 class CalendarPluginWrapper {
   static const CALENDAR_NAME = "Lunar-Calendar";
@@ -60,7 +61,7 @@ class CalendarPluginWrapper {
     return (_result.isSuccess ? _result.data : null);
   }
 
-  Future<List<Event>> getEvents({DateTime start, DateTime end}) async {
+  Future<List<EventEx>> getEvents({DateTime start, DateTime end}) async {
     if (!_init) await initCalendar();
 
     DateTime now = DateTime.now();
@@ -77,6 +78,8 @@ class CalendarPluginWrapper {
     );
 
     if (!result.isSuccess) return null;
+
+    //TODO: convert to EventEx
 
     return result.data.toList();
   }
@@ -117,7 +120,8 @@ class CalendarPluginWrapper {
   }
 }
 
-extension EventEx on Event {
+//region Local implementation
+extension EventExtension on Event {
   String get json {
     final Map<String, dynamic> data = Map<String, dynamic>();
 
@@ -137,7 +141,7 @@ extension EventEx on Event {
   }
 }
 
-extension RecurrenceRuleEx on RecurrenceRule {
+extension RecurrenceRuleExtension on RecurrenceRule {
   Map<String, dynamic> json() {
     final Map<String, dynamic> data = Map<String, dynamic>();
 
@@ -153,3 +157,4 @@ extension RecurrenceRuleEx on RecurrenceRule {
     return data;
   }
 }
+//endregion
